@@ -9,9 +9,12 @@
   <div class="tab-header">
     <button class="tab-button active" data-tab="timerTab">Sleep Timer</button>
     <button class="tab-button" data-tab="skipperTab">Skipper</button>
+    <button class="tab-button" data-tab="betaTab" id="betaTabBtn">Beta</button>
   </div>
 
-  <div class="tab-content" id="timerTab">
+
+  <!-- Sleep Timer Tab -->
+  <div class="tab-content" id="timerTab" style="display:block;">
     <div class="container">
       <h1>Plex Sleep Timer</h1>
 
@@ -45,7 +48,8 @@
     </div>
   </div>
 
-  <div class="tab-content" id="skipperTab" style="display: none;">
+  <!-- Skipper Tab -->
+  <div class="tab-content" id="skipperTab" style="display:none;">
     <div class="container">
       <h1>Skipper</h1>
       <label><input type="checkbox" id="enableSkipper" /> Enable Skipper</label>
@@ -58,6 +62,50 @@
       <button id="saveSkipperSettings" style="margin-top: 10px;">💾 Save</button>
     </div>
   </div>
+
+  <!-- Beta Tab -->
+  <div class="tab-content" id="betaTab" style="display:none;">
+    <div class="container">
+      <h1 style="display:flex;align-items:center;gap:8px;">
+        Beta
+        <label title="Master switch for all beta features" style="margin-left:auto;display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:600;">
+          <input type="checkbox" id="betaMaster" />
+          Enable Beta
+        </label>
+      </h1>
+
+      <fieldset style="border:1px solid #333;border-radius:8px;padding:10px;margin:10px 0;">
+        <legend>Episode Guard</legend>
+        <label><input type="checkbox" id="episodeGuardEn" /> Stop after</label>
+        <input id="episodeGuardN" type="number" min="1" value="3" style="width:60px"> episodes
+        <div class="hint">Resets if playback is stopped for &gt; 10 minutes.</div>
+      </fieldset>
+
+      <fieldset style="border:1px solid #333;border-radius:8px;padding:10px;margin:10px 0;">
+        <legend>Fade-to-Sleep</legend>
+        <label><input type="checkbox" id="fadeEn" /> Fade volume in last</label>
+        <input id="fadeMinutes" type="number" min="1" value="5" style="width:60px"> minutes
+        <div class="hint">Reduces ~5% every 30s instead of a hard cut.</div>
+      </fieldset>
+
+      <fieldset style="border:1px solid #333;border-radius:8px;padding:10px;margin:10px 0;">
+        <legend>Per-Show Rules</legend>
+        <label><input type="checkbox" id="perShowEn" /> Enable per-show rules UI chip</label>
+        <div class="hint">On a show page, use the floating “Rules” chip to toggle: skip intro, skip credits, lower volume.</div>
+      </fieldset>
+
+      <h2 style="margin-top:14px;">Binge Suggestions</h2>
+      <div id="bingeCards" class="cards"></div>
+
+      <button id="saveBeta" style="margin-top:12px;width:100%;">💾 Save Beta Settings</button>
+    </div>
+  </div>
+<!-- Support / Donate -->
+<div class="footer">
+  <button id="donateBtn" class="linklike" title="Support development">
+    ❤️ Support · Fund
+  </button>
+</div>
 
   <script src="popup.js"></script>
 </body>
