@@ -1,4 +1,4 @@
-# Plex Plus ⏰⏭😴
+# Stream Plus ⏰⏭😴
 
 A browser extension that makes Plex smarter for bedtime and binge sessions.
 
@@ -43,7 +43,7 @@ Everything runs locally in your browser — no accounts, no telemetry.
 ## 🚀 Getting started
 
 1. Open **Plex Web** (`https://app.plex.tv`) in your browser.
-2. Click the **Plex Plus** extension icon.
+2. Click the **Stream Plus** extension icon.
 3. In **Sleep Timer**, pick a preset or set a custom duration.
 4. (Optional) Open **Skipper** to enable automatic skip.
 5. (Optional) Open **Beta** to flip on experimental features like Episode Guard.
