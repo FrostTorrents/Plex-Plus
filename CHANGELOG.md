@@ -1,6 +1,29 @@
-# 📦 Plex Sleep Timer Extension – Changelog
+# 📦 Plex Plus – Changelog
 
 All notable changes to this project will be documented in this file.
+
+---
+
+## [v1.3.0] – 2025-11-08
+
+### 🏷 Renamed
+- Project renamed from **Plex Sleep Timer** to **Plex Plus**.
+
+### ✨ Added
+- **Beta tab** in the popup with a master toggle.
+- **Episode Guard**: auto-stop after _N_ consecutive episodes; counter resets after >10 minutes of inactivity.
+- **Fade-to-Sleep**: progressively reduces volume (~5% every 30s) during the final _N_ minutes of the timer.
+- **Per-Show Rules**: floating **Rules** chip on Plex pages to toggle “skip intro”, “skip credits”, and optional “lower volume” per series.
+- **Skipper honors rules**: intro/credits skipping respects the per-show settings.
+- **Binge Suggestions** (local-only): cards in the Beta tab that (a) suggest an Episode Guard value based on your habits, and (b) surface “keep watching” titles from recent history.
+- **Additive presets**: 15m/30m/60m buttons now **increment** the timer each click (e.g., 15m + 15m + 30m → 60m).
+
+### 🔁 Changed
+- **Timer behavior**: starting a timer while the video is **paused** now pauses the timer (“Waiting”) and auto-resumes when playback starts. Pausing video mid-timer also pauses the countdown; resuming playback resumes the timer.
+- **UI polish**: refreshed popup styling (cards, pills, fieldsets).
+
+### 🧹 Internal
+- Refactored content script to support paused/resumed timer state, and to gate fade logic while paused.
 
 ---
 
