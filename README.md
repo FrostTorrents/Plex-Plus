@@ -1,105 +1,96 @@
-# Stream Plus ⏰⏭😴
+# 📦 Stream Plus — Changelog _(formerly Plex Plus)_
 
-A browser extension that makes Plex smarter for bedtime and binge sessions.
-
-- Set a **sleep timer** with presets (now **additive**: each click stacks time).
-- Auto-**skip intros/credits**.
-- **Fade-to-sleep** and **episode guard** (beta).
-- **Per-show rules** and local **binge suggestions**.
-
-Everything runs locally in your browser — no accounts, no telemetry.
+All notable changes to this project will be documented in this file.
 
 ---
 
-## ✨ What’s inside
+## [Unreleased] – Rebrand prep _(no code release yet)_
 
-### Core
-- ⏰ **Sleep Timer** — Start a custom timer or use presets (15/30/60). Presets now **add** to the current time on each click.
-- 🔕 **Mute Instead of Pause** — Choose to mute, pause, or **lower volume to a set level** at timeout.
-- 🌙 **Dim Screen** — Optional dim overlay when the timer ends.
-- ⏳ **On-Player Countdown** — Compact overlay shows the live time remaining.
-- ➕➖ **Adjust on the Fly** — Add/subtract 10 minutes while the timer runs.
-- 🛑 **Smart Start/Pause** — If the video isn’t playing when you start, the timer **waits**. Pausing playback **pauses** the timer; resuming playback resumes the countdown.
+### 🏷 Renamed
+- Project name changed from **Plex Plus** to **Stream Plus** across README, Wiki, and in-app/UI text (popup title, toasts, overlay labels).
 
-### Skipper
-- ⏭ **Auto Skips** — Clicks **Skip Intro**, **Skip Credits**, and similar prompts automatically.
-- 🧠 **Rule-aware** — Honors your **Per-Show Rules** (e.g., never skip intros for a specific show).
-
-### Beta (toggle in the **Beta** tab)
-- 🛡 **Episode Guard** — Auto-stop after **N** consecutive episodes; resets after >10 minutes idle.
-- 🔈 **Fade-to-Sleep** — Gently lowers volume (~5% every 30s) during the final **N** minutes.
-- 🎛 **Per-Show Rules** — Floating **Rules** chip on Plex pages to toggle:
-  - Skip intro (per show)
-  - Skip credits (per show)
-  - Lower volume for this show
-- 💡 **Binge Suggestions** — Local insights in the popup:
-  - “You usually stop after ~N eps — set guard to N?”
-  - “Keep watching” — recent titles from your history
-
-> Beta features are **off by default** and can be enabled per your preference.
+### 📌 Notes
+- The browser extension manifest `"name"` will switch to **“Stream Plus”** in the next code update.
+- No functional changes in this entry; brand/copy updates only.
+- Storage keys and settings are unchanged; no migration needed.
 
 ---
 
-## 🚀 Getting started
+## [v1.3.1] – 2025-11-10
 
-1. Open **Plex Web** (`https://app.plex.tv`) in your browser.
-2. Click the **Stream Plus** extension icon.
-3. In **Sleep Timer**, pick a preset or set a custom duration.
-4. (Optional) Open **Skipper** to enable automatic skip.
-5. (Optional) Open **Beta** to flip on experimental features like Episode Guard.
+### 🐛 Fixed
+- Skipper obeys per-show rules: only clicks a skip overlay if it can classify it as **Intro/Recap/Opening** or **Credits/Outro** **and** the corresponding series rule is explicitly **ON**.
+- Beta **Rules** chip parsing is reliable across native and custom checkboxes (`role="checkbox"`, `aria-checked`, `data-state`, class-based states).
+- Transport controls excluded from skipper targeting to prevent accidental 10-second seeks/replays.
+- **Fade-to-Sleep** logic is properly gated whenever the main timer is paused.
 
-> Tip: Clicking **15m/30m/60m** multiple times stacks the time (e.g., 15 + 15 + 30 → 60m).
+### ✨ Added
+- **Skip overlay lock:** when a rule is **OFF**, the in-player skip button is made inert (`pointer-events: none`) so nothing—manual clicks, Plex UI, or other scripts—can trigger it.
+- Series title resolution improved with a cached fallback to ensure rules are read for the correct show even when the player UI hides metadata.
 
----
+### 🔁 Changed
+- Safer defaults: unknown/unclassified skip buttons are ignored unless a matching rule is explicitly enabled.
+- Minor overlay/popup polish carried forward from **1.3.0**.
 
-## 🧩 Install (unpacked)
-
-Until published in the store:
-
-1. Download this repository (Code → Download ZIP) and extract it.
-2. In Chrome/Edge, go to `chrome://extensions`.
-3. Enable **Developer mode**.
-4. Click **Load unpacked** and select the project folder.
-5. Open Plex and use the extension.
+### ⚠️ Note
+- If Plex’s own **“Automatically skip intros”** is enabled in Plex Web settings, Plex may still jump the playhead. Disable that setting for the account/library if you want Stream Plus to be the source of truth.
 
 ---
 
-## 🔐 Privacy
+## [v1.3.0] – 2025-11-08
 
-- No accounts, no analytics, no remote requests.
-- All data (settings, per-show rules, local watch history for suggestions) stays in **`chrome.storage.local`**.
-- Permissions are minimal and extension-scoped.
+### 🏷 Renamed
+- Project renamed from **Plex Sleep Timer** to **Plex Plus**.
 
-**Permissions used**
-- `activeTab` — to message the active Plex tab.
-- `scripting` — to run content scripts on Plex pages.
-- `storage` — to save settings and local history.
-- `host_permissions: https://*.plex.tv/*` — only Plex sites.
+### ✨ Added
+- **Beta** tab in the popup with a master toggle.
+- **Episode Guard:** auto-stop after _N_ consecutive episodes; counter resets after >10 minutes of inactivity.
+- **Fade-to-Sleep:** progressively reduces volume (~5% every 30s) during the final _N_ minutes of the timer.
+- **Per-Show Rules:** floating Rules chip on Plex pages to toggle **skip intro**, **skip credits**, and optional **lower volume** per series.
+- **Skipper** honors rules: intro/credits skipping respects the per-show settings.
+- **Binge Suggestions** (local-only): cards in the Beta tab that (a) suggest an Episode Guard value based on your habits, and (b) surface “keep watching” titles from recent history.
+- **Additive presets:** **15m / 30m / 60m** buttons now increment the timer each click (e.g., 15m + 15m + 30m → 60m).
 
----
+### 🔁 Changed
+- Timer behavior: starting a timer while the video is paused now pauses the timer (**“Waiting”**) and auto-resumes when playback starts. Pausing video mid-timer also pauses the countdown; resuming playback resumes the timer.
+- UI polish: refreshed popup styling (cards, pills, fieldsets).
 
-## 🛠 Troubleshooting
-
-- **Timer doesn’t start?** If your video is paused, the timer waits in “Waiting” state and auto-starts when playback begins.
-- **Skips not clicking?** Ensure **Skipper** is enabled in the popup. UI changes in Plex may occasionally move buttons; we try multiple selectors.
-- **No “Rules” chip?** Enable **Beta → Per-Show Rules** and open a show playback page; the chip appears in the top-right.
-- **Icons missing?** Verify icon paths in `manifest.json` or remove the `icons` entries temporarily.
-
----
-
-## 📝 Changelog
-
-See **`CHANGELOG.md`** for version history.  
-Latest: **v1.3.0 (2025-11-08)** — rename to Plex Plus, Beta tab, Episode Guard, Fade-to-Sleep, Per-Show Rules, Binge Suggestions, additive presets, smarter timer start/pause.
+### 🧹 Internal
+- Refactored content script to support paused/resumed timer state, and to gate fade logic while paused.
 
 ---
 
-## 🤝 Contributing
+## [v1.2.0] – 2025-10-31
 
-Issues and PRs are welcome. Please keep features **local-only** and respect the privacy first approach.
+### ✨ Added
+- **Skipper Automation** tab in the popup UI  
+- Auto-click for:
+  - 🎬 **Skip Intro**
+  - 🎞 **Skip Credits**
+  - ⏭ **Play Next Episode**
+- `MutationObserver` integration for real-time DOM updates  
+- Simulated mouse events for robust button clicking  
+- Playback progress awareness to distinguish intro vs credits  
+- Configurable delay (ms) between skip checks  
+- Persistent enable/disable state and delay via `chrome.storage`
 
 ---
 
-## 📄 License
+## [v1.1.0] – 2025-10-25
 
-MIT — do what you like; attribution appreciated.
+### ✨ Added
+- Option to **lower volume** instead of pausing or muting  
+- Volume level selector input (%)  
+- Option persists across sessions
+
+---
+
+## [v1.0.0] – 2025-10-20
+
+### 🎉 Initial Release
+- Sleep timer with custom time input  
+- Preset buttons: **15m**, **30m**, **60m**  
+- **Mute instead of pause** toggle  
+- **Dim screen** when timer ends  
+- **Countdown display** toggle  
+- **Timer history** logging
