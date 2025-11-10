@@ -1,84 +1,97 @@
-# 📦 Stream Plus Changelog
+# Stream Plus
 
-All notable changes to this project will be documented in this file.
+Smart sleep timer and intro or credits skipper for Plex Web. Stream Plus adds a minimal floating timer, per show rules, and a safer skipper that only clicks when it is clearly an intro, recap, opening, credits, or outro. Everything is local, no accounts, no telemetry.
 
----
+## Why use Stream Plus
+- Skip only when you want, per series
+- Pause aware timer that waits while video is paused and resumes on play
+- Additive presets for quick stacking of time
+- Optional fade to sleep volume ramp during the final minutes
+- Beta lab for early features
 
-## [v1.3.1] (2025-11-10)
+## Features
+- Per Show Rules chip on Plex pages
+  - Toggle Skip intro
+  - Toggle Skip credits
+  - Optional Lower volume
+  - Rules stored per series
+- Safer skipper
+  - Clicks only when the overlay text matches Intro, Recap, Opening, Credits, or Outro and when the series rule is on
+  - When a rule is off, Stream Plus locks the skip button with pointer events set to none
+  - Transport controls ignored to prevent 10 second jumps
+- Floating timer overlay
+  - Tiny draggable bar, default size about 200 by 33
+  - Buttons for minus 10 minutes, plus 10 minutes, Cancel
+  - Shift plus mouse wheel adjusts opacity
+  - Additive presets 15, 30, 60
+- Fade to Sleep
+  - Reduces volume about 5 percent every 30 seconds during the final N minutes
+  - Pauses when the main timer is paused
+- Episode Guard
+  - Auto stop after N consecutive episodes with a cooldown reset after 10 minutes idle
+- Binge Suggestions
+  - Local only hints for Episode Guard and quick continue
 
-### 🐛 Fixed
-- Skipper obeys per-show rules: only clicks a skip overlay if it can classify it as **Intro/Recap/Opening** or **Credits/Outro** **and** the corresponding series rule is explicitly **ON**.
-- Beta **Rules** chip parsing is reliable across native and custom checkboxes (`role="checkbox"`, `aria-checked`, `data-state`, class-based states).
-- Transport controls excluded from skipper targeting to prevent accidental 10-second seeks/replays.
-- **Fade-to-Sleep** logic is properly gated whenever the main timer is paused.
+## Compatibility
+- Plex Web on Chromium based browsers
+- Tested on Chrome, Edge, Brave, Opera
 
-### ✨ Added
-- **Skip overlay lock:** when a rule is **OFF**, the in-player skip button is made inert (`pointer-events: none`) so nothing—manual clicks, Plex UI, or other scripts—can trigger it.
-- Series title resolution improved with a cached fallback to ensure rules are read for the correct show even when the player UI hides metadata.
+## Permissions
+- activeTab, scripting, storage
+- Used for overlay injection, skipper logic, and saving settings
+- All data is stored locally in your browser
 
-### 🔁 Changed
-- Safer defaults: unknown or unclassified skip buttons are ignored unless a matching rule is explicitly enabled.
-- Minor overlay and popup polish carried forward from **1.3.0**.
+## Install
+1. Download the release zip or clone the repo
+2. Open chrome colon slash slash extensions
+3. Enable Developer mode
+4. Click Load unpacked, select the project folder
+5. Open Plex Web in a tab
+6. Click the extension icon and pin Stream Plus
 
-### ⚠️ Note
-- If Plex’s own **“Automatically skip intros”** is enabled in Plex Web settings, Plex may still jump the playhead. Disable that setting for the account or library if you want Stream Plus to be the source of truth.
+## Update
+- Pull or download the new release into the same folder
+- Go to chrome colon slash slash extensions and click Reload on Stream Plus
+- Refresh your Plex Web tab
 
----
+## Quick start
+1. Start an episode or movie in Plex Web
+2. Open the popup, pick a preset or set a custom time
+3. Use the Rules chip on the show page or in the player to set Skip intro or Skip credits for that series
+4. Optional, enable Fade to Sleep or Episode Guard in the Beta tab
 
-## [v1.3.0] (2025-11-08)
+## Notes on naming
+- The project is Stream Plus in code and docs
+- The extension manifest name is Stream Plus starting with the next packaged build
 
-### 🏷 Renamed
-- Project renamed from **Plex Sleep Timer** to **Stream Plus**.
+## Tips
+- If Plex has Automatically skip intros enabled in account settings, Plex may still jump the playhead. Disable that in Plex or leave the overlay lock on for series where you do not want skips
+- Unknown skip buttons are ignored unless a matching rule is on
 
-### ✨ Added
-- **Beta** tab in the popup with a master toggle.
-- **Episode Guard:** auto-stop after _N_ consecutive episodes; counter resets after more than 10 minutes of inactivity.
-- **Fade-to-Sleep:** progressively reduces volume (about 5% every 30s) during the final _N_ minutes of the timer.
-- **Per-Show Rules:** floating Rules chip on Plex pages to toggle **skip intro**, **skip credits**, and optional **lower volume** per series.
-- **Skipper** honors rules: intro/credits skipping respects the per-show settings.
-- **Binge Suggestions** (local only): cards in the Beta tab that suggest an Episode Guard value based on your habits and surface “keep watching” titles from recent history.
-- **Additive presets:** **15m / 30m / 60m** buttons now increment the timer each click (for example, 15m + 15m + 30m → 60m).
+## Troubleshooting
+- The timer is not visible
+  - Ensure the extension is loaded and the Plex tab is active
+  - Refresh the Plex page
+- Skips still happen when rules are off
+  - Check Plex account setting Automatically skip intros
+  - Keep overlay lock on for that show
+- Rules do not stick
+  - Make sure third party cookies or site data are not being cleared on close
+  - Confirm storage is allowed in your browser profile
 
-### 🔁 Changed
-- Timer behavior: starting a timer while the video is paused now pauses the timer (**Waiting**) and auto-resumes when playback starts. Pausing video mid-timer also pauses the countdown; resuming playback resumes the timer.
-- UI polish: refreshed popup styling (cards, pills, fieldsets).
+## Roadmap
+- Manifest rename already planned and safe
+- Export or Import settings
+- Optional tiny countdown in the Plex control bar
+- Firefox build
 
-### 🧹 Internal
-- Refactored content script to support paused/resumed timer state and to gate fade logic while paused.
+## Privacy
+- No accounts, no analytics, no remote servers
+- All settings and rules live in chrome.storage on your machine
 
----
+## Contributing
+- Open an issue for bugs or ideas
+- PRs are welcome. Keep code small, readable, and safe by default
 
-## [v1.2.0] (2025-10-31)
-
-### ✨ Added
-- **Skipper Automation** tab in the popup UI  
-- Auto-click for:
-  - 🎬 **Skip Intro**
-  - 🎞 **Skip Credits**
-  - ⏭ **Play Next Episode**
-- `MutationObserver` integration for real-time DOM updates  
-- Simulated mouse events for robust button clicking  
-- Playback progress awareness to distinguish intro vs credits  
-- Configurable delay (ms) between skip checks  
-- Persistent enable/disable state and delay via `chrome.storage`
-
----
-
-## [v1.1.0] (2025-10-25)
-
-### ✨ Added
-- Option to **lower volume** instead of pausing or muting  
-- Volume level selector input (%)  
-- Option persists across sessions
-
----
-
-## [v1.0.0] (2025-10-20)
-
-### 🎉 Initial Release
-- Sleep timer with custom time input  
-- Preset buttons: **15m**, **30m**, **60m**  
-- **Mute instead of pause** toggle  
-- **Dim screen** when timer ends  
-- **Countdown display** toggle  
-- **Timer history** logging
+## License
+- MIT
