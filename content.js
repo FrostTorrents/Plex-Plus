@@ -52,7 +52,8 @@ let beta = {
   episodeGuardN:3,
   fadeEn:false,
   fadeMinutes:5,
-  perShowEn:false,
+  // STABLE: Rules chip controlled only by this flag (default ON)
+  perShowEn:true,
 };
 
 /* Episode guard counters */
@@ -188,6 +189,19 @@ chrome.runtime.onMessage.addListener((message)=>{
     chrome.storage.local.get(Object.keys(beta), (s)=>Object.assign(beta, beta, s));
     updateRulesChipVisibility();
   }
+  else if (message.action === "rules_settings_updated") {
+    // pull latest values and re-evaluate chip visibility
+    chrome.storage.local.get(Object.keys(beta), (s) => {
+      Object.assign(beta, beta, s);
+      injectRulesChip();
+      updateRulesChipVisibility();
+    });
+  }
+  else if (message.action === "open_rules_popover") {
+    try { injectRulesChip(); } catch {}
+    if (typeof toggleRulesPopover === "function") toggleRulesPopover();
+  }
+
 });
 
 /* -------------------------- Timer & Countdown ------------------------- */
@@ -395,7 +409,9 @@ function removeOverlay(){
 
 /* -------------------- Rules Icon + Popover (top-left) ------------------ */
 function injectRulesChip(){
-  if (!(beta.betaMaster && beta.perShowEn)) { removeRulesChip(); return; }
+  // STABLE: only perShowEn controls the chip (no await here)
+  if (!beta.perShowEn) { removeRulesChip(); return; }
+
   if (chipEl) { updateRulesChipVisibility(); return; }
 
   chipEl = document.createElement("button");
@@ -435,11 +451,13 @@ function removeRulesChip(){
 
 function updateRulesChipVisibility(){
   if (!chipEl) return;
-  if (!(beta.betaMaster && beta.perShowEn)) { chipEl.style.display = "none"; return; }
+  // Stable toggle: only perShowEn decides visibility (no await needed)
+  if (!beta.perShowEn) { chipEl.style.display = "none"; return; }
   const v = $("video");
   const playing = !!(v && !v.paused && !v.ended);
   chipEl.style.display = playing ? "none" : "inline-flex";
 }
+
 
 /* ---- Popover ---- */
 async function toggleRulesPopover(){
