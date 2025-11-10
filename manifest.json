@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Plex Plus",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "description": "Plex Plus — set a sleep timer while watching videos on Plex. Includes presets, mute mode, dim screen, skipper, and beta features.",
   "permissions": [
     "scripting",
