@@ -9,8 +9,7 @@ Smart sleep timer + intro or credits skipper for Plex Web. Minimal overlay, per-
 - ⏱️ Timer pauses with playback and resumes on play
 - ➕ Additive presets for fast stacking
 - 🌙 Optional fade-to-sleep volume ramp
-- 🧪 Beta tab for early features
-
+  
 ---
 
 ## 🧩 Features
