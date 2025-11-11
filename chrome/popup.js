@@ -1,252 +1,183 @@
-/* popup.js – unified "Rules & Skip" tab (stable) + Sleep/Beta tabs */
+// popup.js — three tabs: Sleeper / Skipper / Global (robust timer messaging)
 
-const $  = (id) => document.getElementById(id);
-const q  = (sel, root=document) => root.querySelector(sel);
-const qa = (sel, root=document) => Array.from(root.querySelectorAll(sel));
-const clamp = (n, min, max) => Math.min(max, Math.max(min, n));
+let currentSeriesDisplay = 'Unknown Series';
+let currentSeriesKey = 'unknown';
 
-qa(".tab-button").forEach((btn) => {
-  btn.addEventListener("click", () => {
-    qa(".tab-button").forEach((b) => b.classList.remove("active"));
-    qa(".tab-content").forEach((c) => (c.style.display = "none"));
-    btn.classList.add("active");
-    const tabId = btn.dataset.tab;
-    $(tabId).style.display = "block";
+document.addEventListener('DOMContentLoaded', init);
+
+async function init() {
+  wireTabs(['sleeper','skipper','global']);
+
+  const settings = await getSettings();
+
+  // resolve series
+  const fromLocal = await readActiveSeriesFromLocal();
+  currentSeriesDisplay = fromLocal?.title || (await resolvePlexSeriesViaTab()) || 'Unknown Series';
+  currentSeriesKey = normalizeTitle(canonicalizeSeriesTitle(currentSeriesDisplay));
+  setText('seriesName', currentSeriesDisplay);
+
+  const s = withDefaults(settings);
+
+  // ---- Sleeper ----
+  setChecked('countdownVisible', !!s.countdownVisible);
+  onChange('countdownVisible', async () => {
+    const show = getChecked('countdownVisible');
+    await updateSetting('countdownVisible', show);
+    sendToActiveTab({ type: 'overlay:toggle', show });
   });
-});
 
-// ---------------- Defaults ----------------
-const TIMER_DEFAULTS = {
-  timerMinutes: 60,
-  muteInsteadOfPause: false,
-  dimScreen: false,
-  countdownToggle: true,
-  lowerVolumeCheckbox: false,
-  volumeLevelInput: 10, // percent
-};
-
-const RULES_DEFAULTS = {
-  enableSkipper: true,
-  enablePlayNext: true,
-  skipperDelay: 600,
-  perShowEn: true,      // <- now stable, default ON
-};
-
-const BETA_DEFAULTS = {
-  betaMaster: false,
-  episodeGuardEn: false,
-  episodeGuardN: 3,
-  fadeEn: false,
-  fadeMinutes: 5,
-};
-
-// --------------- Storage helpers ---------------
-const getAll = (keys, fallbacks) =>
-  new Promise((resolve) => chrome.storage.local.get(keys, (d) => resolve({ ...fallbacks, ...d })));
-const setAll = (payload) =>
-  new Promise((resolve) => chrome.storage.local.set(payload, resolve));
-
-async function getActivePlexTab() {
-  return new Promise((resolve) => {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      const tab = tabs?.[0] || null;
-      const isPlex = !!(tab?.url && /^https:\/\/(.*\.)?plex\.tv/i.test(tab.url));
-      resolve(isPlex ? tab : null);
+  // Robust button handlers (preventDefault + logs)
+  for (const el of document.querySelectorAll('[data-add]')) {
+    el.addEventListener('click', (e) => {
+      e.preventDefault();
+      const m = parseInt(el.dataset.add, 10);
+      console.debug('[Popup] timer:add', m);
+      sendToActiveTab({ type: 'timer:add', minutes: m });
     });
-  });
-}
-
-// ============================================================================
-// Sleep Timer
-// ============================================================================
-document.addEventListener("DOMContentLoaded", async () => {
-  await hydrateTimerUI();
-  await hydrateRulesUI();
-  await hydrateBetaUI();
-
-  wireTimerUI();
-  wireRulesUI();
-  wireBetaUI();
-
-  renderBingeCards(); // optional helper in long file (safe if no-op)
-});
-
-// ---------- Timer UI ----------
-async function hydrateTimerUI() {
-  const s = await getAll(Object.keys(TIMER_DEFAULTS), TIMER_DEFAULTS);
-  $("timerInput").value = s.timerMinutes;
-  $("muteInsteadOfPause").checked = s.muteInsteadOfPause;
-  $("dimScreen").checked = s.dimScreen;
-  $("countdownToggle").checked = s.countdownToggle;
-  $("lowerVolumeCheckbox").checked = s.lowerVolumeCheckbox;
-  $("volumeLevelInput").value = s.volumeLevelInput;
-  $("volumeLevelContainer").style.display = s.lowerVolumeCheckbox ? "block" : "none";
-
-  qa(".preset").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const inc = parseInt(btn.dataset.minutes, 10);
-      const input = $("timerInput");
-      const max = parseInt(input.max || "480", 10);
-      const prev = Math.max(0, parseInt(input.value || "0", 10));
-      const next = clamp(prev + inc, 1, max);
-      input.value = next;
-      $("statusMessage").textContent = `+${inc}m → ${next}m total`;
-    });
-  });
-}
-
-function wireTimerUI() {
-  $("lowerVolumeCheckbox").addEventListener("change", (e) => {
-    $("volumeLevelContainer").style.display = e.target.checked ? "block" : "none";
-  });
-
-  $("startBtn").addEventListener("click", async () => {
-    const minutes = Math.max(1, parseInt($("timerInput").value || "60", 10));
-    const endTime = Date.now() + minutes * 60 * 1000;
-
-    const options = {
-      mute: $("muteInsteadOfPause").checked,
-      dim: $("dimScreen").checked,
-      showCountdown: $("countdownToggle").checked,
-      lowerVolume: $("lowerVolumeCheckbox").checked,
-      volumeLevel: Math.min(100, Math.max(0, parseInt($("volumeLevelInput").value || "10", 10))) / 100,
-    };
-
-    await setAll({
-      timerMinutes: minutes,
-      muteInsteadOfPause: options.mute,
-      dimScreen: options.dim,
-      countdownToggle: options.showCountdown,
-      lowerVolumeCheckbox: options.lowerVolume,
-      volumeLevelInput: Math.round(options.volumeLevel * 100),
-      plexSleepEndTime: endTime,
-      plexSleepOptions: options,
-    });
-
-    const tab = await getActivePlexTab();
-    if (tab) {
-      chrome.tabs.sendMessage(tab.id, { action: "start_timer", endTime, options });
-      $("statusMessage").textContent = `⏱️ Timer started for ${minutes} minutes`;
-    } else {
-      $("statusMessage").textContent = "⚠️ Please open a Plex tab before starting the timer.";
-    }
-  });
-
-  $("cancelBtn").addEventListener("click", async () => {
-    const tab = await getActivePlexTab();
-    if (tab) {
-      chrome.tabs.sendMessage(tab.id, { action: "cancel_timer" });
-      $("statusMessage").textContent = "❌ Timer canceled";
-    } else {
-      $("statusMessage").textContent = "⚠️ No Plex tab found.";
-    }
-    await setAll({ plexSleepEndTime: 0 });
-  });
-}
-
-// ============================================================================
-// Rules & Skip (stable)
-// ============================================================================
-async function hydrateRulesUI() {
-  const s = await getAll(Object.keys(RULES_DEFAULTS), RULES_DEFAULTS);
-  $("enableSkipper").checked = s.enableSkipper;
-  $("enablePlayNext").checked = s.enablePlayNext;
-  $("skipperDelay").value = s.skipperDelay;
-  $("perShowEn").checked = s.perShowEn;
-}
-
-function wireRulesUI() {
-  $("saveRulesSettings").addEventListener("click", async () => {
-    const payload = {
-      enableSkipper: $("enableSkipper").checked,
-      enablePlayNext: $("enablePlayNext").checked,
-      skipperDelay: Math.max(100, parseInt($("skipperDelay").value || "600", 10)),
-      perShowEn: $("perShowEn").checked,
-    };
-    await setAll(payload);
-
-    const tab = await getActivePlexTab();
-    if (tab) {
-      chrome.tabs.sendMessage(tab.id, { action: "rules_settings_updated" });
-    }
-
-    $("rulesStatus").textContent = "✅ Rules & Skip saved";
-    setTimeout(() => ($("rulesStatus").textContent = ""), 1500);
-  });
-
-  // Convenience: open the in-page Rules chip
-  $("openRulesForThisShow").addEventListener("click", async () => {
-    const tab = await getActivePlexTab();
-    if (!tab) {
-      $("rulesStatus").textContent = "⚠️ Open a Plex tab first";
-      return;
-    }
-    chrome.tabs.sendMessage(tab.id, { action: "open_rules_popover" });
-    $("rulesStatus").textContent = "🎛 Opening rules in Plex…";
-    setTimeout(() => ($("rulesStatus").textContent = ""), 1800);
-  });
-}
-
-// ============================================================================
-// Beta (per-show rules removed from here)
-// ============================================================================
-async function hydrateBetaUI() {
-  const s = await getAll(Object.keys(BETA_DEFAULTS), BETA_DEFAULTS);
-  $("betaMaster").checked = s.betaMaster;
-  $("episodeGuardEn").checked = s.episodeGuardEn;
-  $("episodeGuardN").value = s.episodeGuardN;
-  $("fadeEn").checked = s.fadeEn;
-  $("fadeMinutes").value = s.fadeMinutes;
-}
-
-function wireBetaUI() {
-  $("saveBeta").addEventListener("click", async () => {
-    const payload = {
-      betaMaster: $("betaMaster").checked,
-      episodeGuardEn: $("episodeGuardEn").checked,
-      episodeGuardN: Math.max(1, parseInt($("episodeGuardN").value || "3", 10)),
-      fadeEn: $("fadeEn").checked,
-      fadeMinutes: Math.max(1, parseInt($("fadeMinutes").value || "5", 10)),
-    };
-    await setAll(payload);
-
-    const tab = await getActivePlexTab();
-    if (tab) {
-      chrome.tabs.sendMessage(tab.id, { action: "beta_settings_updated" });
-    }
-
-    $("betaStatus").textContent = "✅ Beta settings saved";
-    setTimeout(() => ($("betaStatus").textContent = ""), 1500);
-  });
-}
-
-// (Optional) simple toast used elsewhere in long file
-function toast(msg) {
-  $("statusMessage").textContent = msg;
-}
-
-// Stub so the file stays drop-in compatible if you had this function
-async function renderBingeCards() {}
-
-// --- Donate button handler (Square link) ---
-(() => {
-  const btn = document.getElementById("donateBtn");
-  if (!btn) return;
-
-  const url = btn.getAttribute("data-url") || "https://square.link/u/JZUUls2L";
-
-  btn.addEventListener("click", (e) => {
+  }
+  $('sub10').addEventListener('click', (e) => {
     e.preventDefault();
-    try {
-      if (typeof chrome !== "undefined" && chrome?.tabs?.create) {
-        chrome.tabs.create({ url });
-      } else if (typeof browser !== "undefined" && browser?.tabs?.create) {
-        browser.tabs.create({ url });
-      } else {
-        window.open(url, "_blank", "noopener,noreferrer");
-      }
-    } catch (_) {
-      try { window.open(url, "_blank"); } catch(__) {}
-    }
+    console.debug('[Popup] timer:sub 10');
+    sendToActiveTab({ type: 'timer:sub', minutes: 10 });
   });
-})();
+  $('cancel').addEventListener('click', (e) => {
+    e.preventDefault();
+    console.debug('[Popup] timer:cancel');
+    sendToActiveTab({ type: 'timer:cancel' });
+  });
+
+  // ---- Global ----
+  setChecked('globalEnabled', !!s.globalEnabled);
+  setValue('skipDelayMs', s.skipDelayMs);
+  setValue('volumeLevel', s.volumeLevel);
+  setChecked('muteInsteadOfPause', !!s.muteInsteadOfPause);
+  setChecked('dimScreen', !!s.dimScreen);
+  ['globalEnabled','skipDelayMs','volumeLevel','muteInsteadOfPause','dimScreen']
+    .forEach(id => onChange(id, async (val) => updateSetting(id, val)));
+
+  // ---- Skipper ----
+  const rules = ensureDefaultRules((s.perShowRulesByKey || {})[currentSeriesKey]);
+  setChecked('skipIntro', !!rules.skipIntro);
+  setChecked('skipCredits', !!rules.skipCredits);
+  setChecked('lowerVolume', !!rules.lowerVolume);
+  ['skipIntro','skipCredits','lowerVolume'].forEach(id => onChange(id, persistPerShow));
+
+  const disabledSet = new Set(s.disabledSeriesKeys || []);
+  paintDisableUI(disabledSet.has(currentSeriesKey));
+  $('toggleDisableSeries').addEventListener('click', toggleDisableSeries);
+
+  async function persistPerShow() {
+    const fresh = withDefaults(await getSettings());
+    const allByKey = fresh.perShowRulesByKey || {};
+    const prev = ensureDefaultRules(allByKey[currentSeriesKey]);
+    const updated = {
+      ...prev,
+      skipIntro: getChecked('skipIntro'),
+      skipCredits: getChecked('skipCredits'),
+      lowerVolume: getChecked('lowerVolume'),
+    };
+    allByKey[currentSeriesKey] = updated;
+
+    const byDisplay = fresh.perShowRules || {};
+    byDisplay[currentSeriesDisplay] = updated;
+
+    await updateSetting('perShowRulesByKey', allByKey);
+    await updateSetting('perShowRules', byDisplay);
+  }
+
+  async function toggleDisableSeries() {
+    const fresh = withDefaults(await getSettings());
+    const set = new Set(fresh.disabledSeriesKeys || []);
+    const willDisable = !set.has(currentSeriesKey);
+
+    if (willDisable) {
+      set.add(currentSeriesKey);
+      setChecked('skipIntro', false);
+      setChecked('skipCredits', false);
+    } else {
+      set.delete(currentSeriesKey);
+      if (!getChecked('skipIntro') && !getChecked('skipCredits')) {
+        setChecked('skipIntro', true);
+        setChecked('skipCredits', true);
+      }
+    }
+    await updateSetting('disabledSeriesKeys', Array.from(set));
+
+    const byKey = fresh.perShowRulesByKey || {};
+    if (!byKey[currentSeriesKey]) {
+      byKey[currentSeriesKey] = ensureDefaultRules(null);
+      await updateSetting('perShowRulesByKey', byKey);
+    }
+    paintDisableUI(willDisable);
+  }
+}
+
+/* ---------- Tabs ---------- */
+function wireTabs(names){
+  const tabs = names.map(n => ({ btn: document.querySelector(`.tab[data-tab="${n}"]`), pnl: $(`panel-${n}`) }));
+  tabs.forEach(({btn}) => btn.addEventListener('click', () => {
+    tabs.forEach(({btn,pnl}) => { btn.classList.remove('active'); pnl.classList.remove('active'); });
+    const t = tabs.find(x => x.btn === btn);
+    btn.classList.add('active'); t.pnl.classList.add('active');
+  }));
+}
+
+/* ---------- Messaging (more robust) ---------- */
+async function sendToActiveTab(message) {
+  // Prefer Plex tabs
+  const plexTabs = await queryTabs('*://*.plex.tv/*');
+  let target = plexTabs.find(t => t.active) || plexTabs[0];
+
+  // Fallback: current active tab (covers local IP/hostnames)
+  if (!target) {
+    const [active] = await chrome.tabs.query({ active: true, currentWindow: true });
+    target = active;
+  }
+
+  if (target?.id) {
+    try { chrome.tabs.sendMessage(target.id, message); }
+    catch (e) { /* ignore */ }
+  } else {
+    console.warn('[Popup] No target tab for message', message);
+  }
+}
+
+/* ---------- Data helpers (unchanged) ---------- */
+function withDefaults(s = {}) {
+  return {
+    globalEnabled: s.globalEnabled !== false,
+    skipDelayMs: Number.isFinite(s.skipDelayMs) ? s.skipDelayMs : 500,
+    volumeLevel: Number.isFinite(s.volumeLevel) ? s.volumeLevel : 50,
+    muteInsteadOfPause: !!s.muteInsteadOfPause,
+    dimScreen: !!s.dimScreen,
+    countdownVisible: !!s.countdownVisible,
+    perShowRulesByKey: s.perShowRulesByKey || {},
+    perShowRules: s.perShowRules || {},
+    disabledSeriesKeys: s.disabledSeriesKeys || []
+  };
+}
+function ensureDefaultRules(r){ const b=r||{}; return { skipIntro:b.skipIntro!==false, skipCredits:b.skipCredits!==false, lowerVolume:!!b.lowerVolume, playNext:b.playNext!==false }; }
+function canonicalizeSeriesTitle(s){ let t=(s||'').trim(); t=t.replace(/\s*[-–—]\s*S\d+\s*[·x×]?\s*E\d+\s*$/i,''); t=t.replace(/\s*\(\s*S\d+\s*[·x×]?\s*E\d+\s*\)\s*$/i,''); t=t.replace(/\s*\bS(?:eason)?\s*\d+\s*[·x×.]?\s*E(?:pisode)?\s*\d+\b.*$/i,''); t=t.replace(/\s*\bS\d+\s*E\d+\b.*$/i,''); t=t.replace(/\s*[-–—]\s*Season\s*\d+\s*Episode\s*\d+\s*$/i,''); t=t.replace(/\s*\bSeason\s*\d+\s*Episode\s*\d+\b.*$/i,''); return t.trim(); }
+function normalizeTitle(s){ return (s||'').toLowerCase().replace(/\s+/g,' ').replace(/[^\p{L}\p{N}\s]+/gu,'').trim(); }
+function paintDisableUI(disabled){
+  const btn=$('toggleDisableSeries'), hint=$('disableHint');
+  const lock = on => ['skipIntro','skipCredits','lowerVolume'].forEach(id => { $(id).disabled = on; });
+  if(disabled){ btn.textContent='✅ Enable this series'; btn.classList.remove('danger'); hint.textContent='This series is disabled'; lock(true); }
+  else{ btn.textContent='🚫 Disable this series'; btn.classList.add('danger'); hint.textContent=''; lock(false); }
+}
+
+/* ---------- Chrome plumbing ---------- */
+function getSettings(){ return new Promise(r => chrome.runtime.sendMessage({type:'getSettings'}, r)); }
+function updateSetting(key,value){ return new Promise(r => chrome.runtime.sendMessage({type:'updateSetting', key, value}, () => r())); }
+function readActiveSeriesFromLocal(){ return new Promise(r => chrome.storage.local.get(['activeSeriesTitle','activeSeriesKey'], v => r({title:v.activeSeriesTitle,key:v.activeSeriesKey}))); }
+async function resolvePlexSeriesViaTab(){ try{ const tabs=await queryTabs('*://*.plex.tv/*'); if(!tabs.length) return null; const active=tabs.find(t=>t.active)||tabs[0]; return await execInTab(active.id, () => { const pick=(...ss)=>{for(const s of ss){const el=document.querySelector(s); if(el&&el.textContent) return el.textContent.trim();} return null;}; return pick('[data-testid="metadataGrandparentTitle"]','[data-qa-id="metadataGrandparentTitle"]','.PrePlayTitle .grandparent-title','[data-testid="metadata-title"]') || (document.title||'').replace(/\s+-\s*Plex.*/i,'').trim() || 'Unknown Series'; }); } catch { return null; } }
+function queryTabs(url){ return new Promise(r => chrome.tabs.query({url}, r)); }
+function execInTab(tabId, func){ return new Promise(r => chrome.scripting.executeScript({target:{tabId}, func}, res => r(res?.[0]?.result || null))); }
+
+/* ---------- Tiny DOM ---------- */
+function $(id){return document.getElementById(id)}
+function setText(id,v){$(id).textContent=v}
+function setChecked(id,v){$(id).checked=!!v}
+function getChecked(id){return !!$(id).checked}
+function setValue(id,v){$(id).value=v}
+function onChange(id,fn){ $(id).addEventListener('change',e=>{ const val=e.target.type==='checkbox'?e.target.checked:parseInt(e.target.value,10); fn(val); }); }

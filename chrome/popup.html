@@ -1,113 +1,131 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html>
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="utf-8" />
   <title>Stream Plus</title>
-  <link rel="stylesheet" href="styles.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    /* ---------- Tokens (light/dark) ---------- */
+    :root{
+      --bg:#ffffff; --panel:#f7f8fb; --text:#0b1220; --muted:#6b7280; --line:#e5e7eb;
+      --accent:#2563eb; --danger:#dc2626; --radius:12px; --shadow:0 10px 30px rgba(0,0,0,.06);
+    }
+    @media (prefers-color-scheme: dark){
+      :root{
+        --bg:#0b1220; --panel:#121927; --text:#e8edf5; --muted:#9aa2b1; --line:#1f2736;
+        --shadow:0 8px 24px rgba(0,0,0,.35);
+      }
+    }
+
+    html,body{margin:0;padding:0}
+    body{
+      width:360px; background:var(--bg); color:var(--text);
+      font:14px/1.45 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+    }
+
+    /* Header */
+    header{padding:12px}
+    .title{display:flex;align-items:center;gap:8px;font-weight:800;font-size:18px}
+    .chip{font-size:11px;font-weight:700;padding:2px 6px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
+    .subtitle{color:var(--muted);font-size:12px;margin-top:4px}
+
+    /* Tabs */
+    .tabs{display:flex;gap:16px;padding:10px 12px 0;border-bottom:1px solid var(--line)}
+    .tab{position:relative;padding:8px 0;cursor:pointer;color:var(--muted);font-weight:700;user-select:none}
+    .tab.active{color:var(--text)}
+    .tab.active::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:2px;background:var(--accent);border-radius:2px}
+
+    /* Panels */
+    .panel{display:none;padding:12px}
+    .panel.active{display:block}
+
+    /* Cards */
+    .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px;margin-bottom:12px}
+    .card h2{margin:0 0 10px;font-size:16px}
+    .muted{color:var(--muted);font-size:12px}
+
+    /* Controls */
+    .row{display:flex;align-items:center;gap:10px;margin:10px 0}
+    .grid{display:grid;grid-template-columns:1fr 120px;gap:10px;align-items:center}
+    input[type="number"]{width:120px;padding:8px 10px;border-radius:10px;border:1px solid var(--line);background:transparent;color:inherit;outline:none}
+    input[type="checkbox"]{accent-color:var(--accent)}
+
+    .btn{border:1px solid var(--line);background:transparent;color:inherit;padding:8px 12px;border-radius:999px;cursor:pointer;font-weight:800;transition:background .15s,border-color .15s,transform .05s}
+    .btn:hover{background:rgba(0,0,0,.04)} @media (prefers-color-scheme: dark){ .btn:hover{background:rgba(255,255,255,.06)} }
+    .btn.danger{color:var(--danger);border-color:rgba(220,38,38,.4)}
+    .timer-controls{display:flex;gap:8px;flex-wrap:wrap}
+    .timer-controls .btn{min-width:66px}
+
+    /* Footer */
+    footer{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-top:1px solid var(--line)}
+    .coffee{display:inline-flex;gap:8px;align-items:center;text-decoration:none;padding:8px 12px;border-radius:10px;font-weight:900;border:1px solid #c7d2fe;background:#eef2ff;color:#0b1220}
+    @media (prefers-color-scheme: dark){ .coffee{background:#1a2337;border-color:#2a3653;color:#e8edf5} }
+  </style>
 </head>
 <body>
-  <div class="tab-header">
-    <button class="tab-button active" data-tab="timerTab">Sleep Timer</button>
-    <button class="tab-button" data-tab="rulesTab">Rules &amp; Skip</button>
-    <button class="tab-button" data-tab="betaTab" id="betaTabBtn">Beta</button>
-  </div>
+  <header>
+    <div class="title">Stream Plus <span class="chip">v1.0</span></div>
+    <div class="subtitle">Series: <span id="seriesName">—</span></div>
+  </header>
 
-  <!-- Sleep Timer Tab -->
-  <div class="tab-content" id="timerTab" style="display:block;">
-    <div class="container">
-      <h1>Sleep Timer</h1>
+  <nav class="tabs">
+    <div class="tab active" data-tab="sleeper">Sleeper</div>
+    <div class="tab" data-tab="skipper">Skipper</div>
+    <div class="tab" data-tab="global">Global</div>
+  </nav>
 
-      <div class="presets">
-        <button class="preset" data-minutes="15">15m</button>
-        <button class="preset" data-minutes="30">30m</button>
-        <button class="preset" data-minutes="60">60m</button>
+  <!-- Sleeper -->
+  <section id="panel-sleeper" class="panel active">
+    <div class="card">
+      <h2>Sleep Timer</h2>
+      <div class="row"><label><input type="checkbox" id="countdownVisible"> Show floating timer overlay</label></div>
+      <div class="timer-controls">
+        <button class="btn" data-add="15">+15m</button>
+        <button class="btn" data-add="30">+30m</button>
+        <button class="btn" data-add="60">+60m</button>
+        <button class="btn" id="sub10">−10m</button>
+        <button class="btn danger" id="cancel">Cancel</button>
       </div>
-
-      <label for="timerInput">Custom time (minutes)</label>
-      <input type="number" id="timerInput" min="1" max="480" value="60" />
-
-      <label><input type="checkbox" id="muteInsteadOfPause" /> Mute instead of pause</label>
-      <label><input type="checkbox" id="dimScreen" /> Dim screen when timer ends</label>
-      <label><input type="checkbox" id="countdownToggle" /> Show countdown in player</label>
-      <label><input type="checkbox" id="lowerVolumeCheckbox" /> Lower volume instead of mute/pause</label>
-
-      <div id="volumeLevelContainer" style="display:none; margin-left:20px;">
-        Volume level (%):
-        <input type="number" id="volumeLevelInput" min="0" max="100" value="10" style="width:60px;" />
-      </div>
-
-      <div class="buttons">
-        <button id="startBtn">⏱️ Start</button>
-        <button id="cancelBtn">❌ Cancel</button>
-      </div>
-
-      <div id="suggestion"></div>
-      <div id="logContainer"></div>
-      <div id="statusMessage"></div>
     </div>
-  </div>
+  </section>
 
-  <!-- Rules & Skip Tab -->
-  <div class="tab-content" id="rulesTab" style="display:none;">
-    <div class="container">
-      <h1>Rules &amp; Skip</h1>
-
-      <label><input type="checkbox" id="enableSkipper" /> Enable auto-skip (intro &amp; credits)</label>
-      <label><input type="checkbox" id="enablePlayNext" /> Auto-play next episode</label>
-
-      <div style="margin-top:10px;">
-        <label for="skipperDelay">Check interval (ms)</label>
-        <input type="number" id="skipperDelay" min="100" step="100" value="600" />
+  <!-- Skipper -->
+  <section id="panel-skipper" class="panel">
+    <div class="card">
+      <h2>Per-Show Rules</h2>
+      <div class="row"><label><input type="checkbox" id="skipIntro"> Skip Intro</label></div>
+      <div class="row"><label><input type="checkbox" id="skipCredits"> Skip Credits</label></div>
+      <div class="row"><label><input type="checkbox" id="lowerVolume"> Lower volume in credits</label></div>
+      <div class="row" style="justify-content:space-between">
+        <span id="disableHint" class="muted"></span>
+        <button id="toggleDisableSeries" class="btn danger">🚫 Disable this series</button>
       </div>
+    </div>
+  </section>
 
-      <hr style="border:none;border-top:1px solid #2c2d31;margin:12px 0;" />
-
-      <label><input type="checkbox" id="perShowEn" /> Show per-show “Rules” chip in Plex</label>
-      <div class="hint">Use the chip on a show page to toggle: <em>Skip intro</em>, <em>Skip credits</em>, and <em>Lower volume</em> for that series.</div>
-
-      <div class="buttons" style="margin-top:12px;">
-        <button id="openRulesForThisShow">🎛 Open rules for this show</button>
-        <button id="saveRulesSettings" style="margin-left:auto;">💾 Save</button>
+  <!-- Global -->
+  <section id="panel-global" class="panel">
+    <div class="card">
+      <h2>Global</h2>
+      <p class="muted">Applies to all skippers & the sleep timer.</p>
+      <div class="row"><label><input type="checkbox" id="globalEnabled"> Enable all automation</label></div>
+      <div class="row grid">
+        <label for="skipDelayMs">Delay (ms) before clicking</label>
+        <input type="number" id="skipDelayMs" min="0" step="50" />
       </div>
-
-      <div id="rulesStatus" class="hint" style="margin-top:8px;"></div>
+      <div class="row grid">
+        <label for="volumeLevel">Volume level (%)</label>
+        <input type="number" id="volumeLevel" min="0" max="100" step="5" />
+      </div>
+      <div class="row"><label><input type="checkbox" id="muteInsteadOfPause"> Mute instead of pause on timer end</label></div>
+      <div class="row"><label><input type="checkbox" id="dimScreen"> Dim screen on timer end</label></div>
     </div>
-  </div>
+  </section>
 
-  <!-- Beta Tab -->
-  <div class="tab-content" id="betaTab" style="display:none;">
-    <div class="container">
-      <h1 style="display:flex;align-items:center;gap:8px;">
-        Beta
-        <label title="Master switch for all beta features" style="margin-left:auto;display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:600;">
-          <input type="checkbox" id="betaMaster" />
-          Enable Beta
-        </label>
-      </h1>
-
-      <fieldset style="border:1px solid #333;border-radius:8px;padding:10px;margin:10px 0;">
-        <legend>Episode Guard</legend>
-        <label><input type="checkbox" id="episodeGuardEn" /> Stop after</label>
-        <input id="episodeGuardN" type="number" min="1" value="3" style="width:60px"> episodes
-        <div class="hint">Resets if playback is stopped for &gt; 10 minutes.</div>
-      </fieldset>
-
-      <fieldset style="border:1px solid #333;border-radius:8px;padding:10px;margin:10px 0;">
-        <legend>Fade-to-Sleep</legend>
-        <label><input type="checkbox" id="fadeEn" /> Fade volume in last</label>
-        <input id="fadeMinutes" type="number" min="1" value="5" style="width:60px"> minutes
-        <div class="hint">Reduces ~5% every 30s instead of a hard cut.</div>
-      </fieldset>
-
-      <button id="saveBeta" style="margin-top:12px;width:100%;">💾 Save Beta Settings</button>
-      <div id="betaStatus" class="hint" style="margin-top:8px;"></div>
-    </div>
-  </div>
-
-  <!-- Donate -->
-  <div style="padding:10px;text-align:center;color:#a1a6b0;">
-    <button id="donateBtn" data-url="https://square.link/u/JZUUls2L" style="width:100%;">☕ Buy me a coffee</button>
-  </div>
+  <footer>
+    <span class="muted">Stream Plus</span>
+    <a class="coffee" href="https://square.link/u/JZUUls2L" target="_blank" rel="noopener">☕ Buy me a coffee</a>
+  </footer>
 
   <script src="popup.js"></script>
 </body>
