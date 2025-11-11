@@ -1,162 +1,182 @@
-# 📦 Stream Plus
+# Stream Plus — Smart Sleeper & Skipper for Plex
 
-Smart sleep timer + intro or credits skipper for Plex Web. Minimal overlay, per-show rules, and a safe skipper that only clicks when it’s clearly an intro, recap, opening, credits, or outro. No accounts, no telemetry.
-
----
-
-## ✨ Why Stream Plus
-- 🎯 Per-series control so it skips only when you want
-- ⏱️ Timer pauses with playback and resumes on play
-- ➕ Additive presets for fast stacking
-- 🌙 Optional fade-to-sleep volume ramp
-- 🧪 Beta tab for early features
+A Chrome/Chromium extension that adds a **per-show skipper**, a **sleep timer** with a tiny **floating overlay**, and binge-safety tools for Plex.  
+A Firefox port exists but is currently **outdated** (see Roadmap).
 
 ---
 
-## 🧩 Features
-- 🎛️ **Per-Show Rules chip**
-  - 🎬 Skip intro
-  - 🎞️ Skip credits
-  - 🔉 Lower volume (optional)
-  - 💾 Rules saved per series
+## ✨ What it does
 
-- 🛡️ **Safer skipper**
-  - ✅ Clicks only if overlay text matches Intro, Recap, Opening, Credits, or Outro and the series rule is on
-  - 🔒 When a rule is off, the skip button is locked (`pointer-events: none`)
-  - ⏭️ Transport controls ignored to prevent accidental 10s jumps
-  - 🗂️ Better series title resolution with cached fallback
+**Per-Show Rules (Rules Chip)**
+- Toggle per-series:
+  - 🎬 **Skip Intro**
+  - 🎞️ **Skip Credits** (modular `outro.js`)
+  - 🔉 **Lower volume in credits** (optional)
+- “🚫 **Disable this series**” (series-wide) using robust title canonicalization.
+- Skipper actions honor your per-show settings.
 
-- 🪟 **Floating timer overlay**
-  - 🧲 Tiny draggable bar, ~200×33
-  - ➖ −10m   ➕ +10m   ✖ Cancel
-  - 🖱️ Shift + wheel adjusts opacity
-  - ⌚ Presets 15, 30, 60 are additive
+**Skipper Automation**
+- 🖱️ Clicks only when on-screen text matches known labels (“Intro”, “Recap”, “Opening”, “Credits”, “Outro”, “Play Next”).
+- 🧠 Playback/DOM aware to avoid false clicks.
+- ⚙️ Configurable global delay between checks; persists via `chrome.storage`.
 
-- 🌗 **Fade to Sleep**
-  - 🔊 Lowers volume ~5% every 30s during final minutes
-  - ⏸️ Auto-pauses when the main timer is paused
+**Sleep Timer**
+- 🪟 Tiny overlay: draggable, **resizable**, opacity via **Shift + mouse-wheel**.
+- ➕ Presets **+15 / +30 / +60**, **−10**, and **Cancel** (additive).
+- ⌚ **Playback-aware**: timer **only counts down while the video is actually playing**; auto-pauses on pause/end and resumes on play.
+- 🌗 Optional **Fade-to-Sleep** (lowers volume ~5% every 30s in the final minutes).
+- 🛑 End-of-timer actions: **pause** or **mute**, plus optional **dim screen**.
+- 🧷 Position, scale & opacity **persist across sessions**.
 
-- 🧱 **Episode Guard**
-  - 🛑 Auto-stop after N consecutive episodes
-  - 🔁 Counter resets after 10 minutes idle
+**Binge Guards**
+- 🧱 **Episode Guard**: stop after *N* consecutive episodes; auto-reset after 10 minutes idle.
+- 💡 (Planned) **Binge Suggestions**: local-only suggestions for guard values & “keep watching”.
 
-- 🧠 **Binge Suggestions** *(local only)*
-  - 💡 Suggests Episode Guard values and quick continue picks
-
----
-
-## 🧪 Compatibility
-- 🖥️ Plex Web
-- 🧭 Chromium-based browsers: Chrome, Edge, Brave, Opera
-- 🦊 Firefox (temporary install supported)
+**Popup UI**
+- Three clean tabs:
+  - **Sleeper** – overlay toggle & timer controls
+  - **Skipper** – per-show rules & series disable
+  - **Global** – extension-wide settings (delay, volume, end-of-timer behavior)
+- ☕ “Buy me a coffee” link supported.
 
 ---
 
-## 🔐 Permissions
-- ⚙️ `activeTab`, `scripting`, `storage`
-- 💾 Used for overlay injection, skipper logic, and saving settings
-- 🏠 All data stays local in your browser
+## 🧩 How it works (high level)
+
+manifest.json
+background.js # settings storage, message broker
+content.js # overlay, timer, series-key, boots skippers, playback-aware timer
+skip.js # Intro skipper
+outro.js # Credits/outro skipper
+next.js # Play Next skipper
+popup.html / popup.js # 3-tab UI: Sleeper, Skipper, Global
+overlay.html # the floating timer bar (injected by content.js)
+options.html (legacy) # advanced settings (optional)
+styles.css # shared styles (light use)
+
+markdown
+Copy code
+
+- `content.js`:
+  - Canonicalizes the **series title** (strips “SxxExx”, etc.), publishes `activeSeriesTitle` + `activeSeriesKey` to `chrome.storage.local`.
+  - Injects/controls the **overlay** (drag, resize, opacity; state persisted).
+  - **Playback-aware timer** bound to `<video>` play/pause/ended events.
+  - Boots skippers (`skip.js`, `outro.js`, `next.js`) when ready.
+- `popup.js`:
+  - Reads/writes settings via `chrome.storage.sync`.
+  - Sends messages to the active Plex tab (works on `app.plex.tv` and local Plex hosts/IPs).
+  - Ensures the overlay is visible before timer actions.
+
+**Storage (key examples)**
+- `countdownVisible`, `globalEnabled`, `skipDelayMs`, `volumeLevel`
+- `perShowRulesByKey`, `perShowRules`, `disabledSeriesKeys`
+- `overlayState` `{ left, top, scale, opacity }` (local)
+- `activeSeriesTitle`, `activeSeriesKey` (local)
 
 ---
 
-## 📥 Install
+## 🔧 Install (Chrome / Edge / Brave)
 
-### 🧭 Chrome / Edge / Brave / Opera
+1. **Clone** the repo or download it.
+2. Put your icons in `chrome/icons/` as:
+icon16.png icon48.png icon128.png
 
-1. ⬇️ Download the release zip or clone the repo
-2. 🔧 Open `chrome://extensions`
-3. 🧰 Enable **Developer mode**
-4. 📂 Click **Load unpacked** and select the project folder
-5. 🎞️ Open Plex Web
-6. 📌 Pin **Stream Plus** from your extensions
+pgsql
+Copy code
+3. Open `chrome://extensions`, enable **Developer mode**, click **Load unpacked**, select the `chrome/` folder.
+4. Open Plex (`app.plex.tv` or your local Plex host), start a video.
 
-### 🦊 Firefox (Temporary)
+> If the extension fails to load: double-check the icon filenames & paths in `manifest.json`.
 
-1. ⬇️ Download the ZIP and extract it
-2. 🔧 Visit `about:debugging#/runtime/this-firefox`
-3. 📂 Click **Load Temporary Add-on**
-4. 🧩 Select `manifest.json` from the extracted folder
-5. 🎞️ Open Plex Web and the extension will activate
+### Firefox (temporary note)
 
-> ⚠ Firefox unloads temporary extensions on browser restart — re-load it as needed
+A Firefox version exists but is **behind** the Chrome build. Some modules run, but overlay and skipper wiring need updates for parity. See **Roadmap**.
 
 ---
 
-## ♻️ Update
+## 🛠️ Permissions
 
-- ⬆️ Pull or download the new release into the same folder
-- 🔄 Visit `chrome://extensions` or `about:debugging#/runtime/this-firefox`
-- 🔁 Reload the extension and refresh Plex
+```json
+{
+"permissions": ["storage", "scripting", "activeTab"],
+"host_permissions": [
+ "*://*.plex.tv/*",
+ "*://*/*"         // local Plex servers (optional but recommended)
+]
+}
+You can narrow host permissions if you only use app.plex.tv.
 
----
+🧪 Troubleshooting
+Timer buttons don’t do anything
 
-## 🚀 Quick start
+Ensure Sleeper → Show floating timer overlay is checked.
 
-1. ▶️ Start an episode or movie in Plex Web
-2. ⏱️ Open the popup and pick a preset or set a custom time
-3. 🎛️ Use the **Rules** chip to set **Skip intro** or **Skip credits** for that series
-4. 🌗 Optional: enable **Fade to Sleep** or **Episode Guard** in **Beta**
+Make sure you have an active Plex tab; the popup also falls back to the active tab for local Plex.
 
----
+Check the page console: look for [SmartSkipper] logs.
 
-## 📝 Notes on naming
+Not skipping intro/credits
 
-- 🏷️ The project name is **Stream Plus** in code and docs
-- 📦 The extension manifest name is **Stream Plus** starting with the next packaged build
+Global → Enable all automation must be on.
 
----
+Skipper → Skip Intro / Skip Credits must be on and the series must not be disabled.
 
-## 💡 Tips
+Increase Global → Delay (ms) if clicks are racing the DOM (~500–800ms).
 
-- ⚠️ If Plex has **Automatically skip intros** enabled, Plex may still jump the playhead  
-  👉 Disable that in Plex settings or leave our overlay lock on for shows where you do not want skips
-- 🧼 Unknown skip buttons are ignored unless a matching rule is on
-- 🦊 On Firefox, the native **Skip Intro** button may become unclickable if auto-skip is disabled — a known issue
+Overlay jumps or disappears
 
----
+We clamp it to the viewport; drag it away from the edges.
 
-## 🛠️ Troubleshooting
+Opacity is adjustable via Shift + mouse-wheel (persists).
 
-- 🕶️ **Timer not visible**
-  - ✅ Ensure the extension is loaded and the Plex tab is active
-  - 🔃 Refresh the Plex page
+🧱 Design details (nerdy)
+Series keying: canonicalizeSeriesTitle() strips season/episode & punctuation; normalizeTitle() lowercases and strips non-alphanumerics → stable per-show key.
 
-- ⏩ **Skips happen when rules are off**
-  - 🔍 Check Plex setting **Automatically skip intros**
-  - 🔒 Keep **overlay lock** on for that show
+Playback-aware timer: counts down only when !video.paused && !video.ended && readyState > 2; auto-pauses on pause/ended, resumes on play.
 
-- 📌 **Rules don’t stick**
-  - 🍪 Ensure the browser isn’t clearing site data on close
-  - 🔐 Confirm storage is allowed in your profile
+Overlay state persisted in chrome.storage.local.overlayState, restored on injection.
 
-- 🖱️ **Manual skip button not working in Firefox**
-  - ❌ This may happen when auto-skip is off — it’s a known limitation in current builds
+Messaging: popup ensures overlay visibility for timer:add/sub/cancel before updating.
 
----
+📦 Building / Packaging
+No bundler required. For a Chrome zip:
 
-## 🗺️ Roadmap
+bash
+Copy code
+zip -r stream-plus-chrome.zip chrome \
+  -x "*/.git/*" "*/node_modules/*" "*.DS_Store"
+Firefox build (WIP) will live under firefox/ with its own manifest once updated.
 
-- 🏷️ Manifest rename already planned and safe
-- 📤 Export or import settings
-- ⏳ Optional tiny countdown in the Plex control bar
-- 🦊 Firefox build
+🧭 Roadmap
+ Update Firefox build to parity with Chrome (MV3 compatibility).
 
----
+ Add Binge Suggestions (local-only) UI tab.
 
-## 🔏 Privacy
+ Smarter label detection (site variations / languages).
 
-- 🚫 No accounts, no analytics, no remote servers
-- 💽 All settings and rules live in `chrome.storage` on your machine
+ Optional global hotkeys for timer presets.
 
----
+ Export/import user settings.
 
-## 🤝 Contributing
+ Small-screen popup compact mode toggle.
 
-- 🐛 Open issues for bugs or ideas
-- 🔧 PRs welcome — keep code small, readable, and safe by default
+🔐 Privacy
+All data is local. No analytics. No external network calls.
 
----
+Uses chrome.storage for settings and overlay state.
 
-## 📄 License
+🤝 Contributing
+PRs welcome! Please:
 
-- 📝 MIT
+Keep file/function names consistent with the current architecture.
+
+Avoid heavy dependencies; vanilla + DOM observers are preferred.
+
+Add clear console logs for any non-trivial behavior.
+
+☕ Support
+If this saved you a thousand clicks:
+Buy me a coffee — thank you! 💛
+
+📜 License
+MIT (proposed). If you need a different license, open an issue.
